@@ -158,7 +158,7 @@
           <button class="btn-green" style="padding:6px 14px; font-size:12px;" onclick="addNewDepositCard()">➕ 新增定存方案</button>
         </div>
         <div id="annual-deposits-container"></div>
-        <button class="btn-green btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualDepositsScript()">💾 儲存定存劇本設定</button>
+        <button class="btn-green btn-full" style="padding:10px; font-size:13px;" margin-top:8px;" onclick="saveAnnualDepositsScript()">💾 儲存定存劇本設定</button>
       </div>
 
       <div class="card" style="border: 2px solid #38bdf8;">
@@ -167,7 +167,7 @@
           <button class="btn-blue" style="padding:6px 14px; font-size:12px;" onclick="addNewInsuranceCard()">➕ 新增保單合約</button>
         </div>
         <div id="annual-insurances-container"></div>
-        <button class="btn-blue btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualInsurancesScript()">💾 儲存保險劇本設定</button>
+        <button class="btn-blue btn-full" style="padding:10px; font-size:13px;" margin-top:8px;" onclick="saveAnnualInsurancesScript()">💾 儲存保險劇本設定</button>
       </div>
 
       <div class="card" style="border: 2px solid #a855f7;">
@@ -175,7 +175,7 @@
           <h3 style="color:#c084fc; margin:0;">⚡ 當年度突發事件操縱面板 (1 ~ 12 月劇本)</h3>
         </div>
         <div id="annual-events-container" style="margin-top:10px;"></div>
-        <button class="btn-purple btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualEventsScript()">💾 儲存突發事件劇本設定</button>
+        <button class="btn-purple btn-full" style="padding:10px; font-size:13px;" margin-top:8px;" onclick="saveAnnualEventsScript()">💾 儲存突發事件劇本設定</button>
       </div>
 
       <div class="card">
@@ -241,17 +241,18 @@
       socket.emit('admin:join_room', currentRoomId);
     }
 
-    // 頁面載入自動綁定房間
+    // 連線時立即加入當前房間
     socket.emit('admin:join_room', currentRoomId);
 
+    // 關鍵修復：每次發送指令皆附帶 currentRoomId
     function sendCmd(actionName) {
-      socket.emit(actionName);
+      socket.emit(actionName, currentRoomId);
     }
 
     function saveLeaderboardTitle() {
       const title = document.getElementById('leaderboard-custom-title').value.trim();
       if (!title) return alert('請輸入有效的排行榜名稱！');
-      socket.emit('admin:update_leaderboard_title', title);
+      socket.emit('admin:update_leaderboard_title', { roomId: currentRoomId, title: title });
     }
 
     function exportToExcel() {
@@ -345,7 +346,6 @@
     function closeConfirmModal() { document.getElementById('confirm-modal').style.display = 'none'; }
     function forceProceedNextMonth() { closeConfirmModal(); sendCmd('admin:next_month'); }
 
-    // 股票操作
     function renderStockCards() {
       const container = document.getElementById('annual-stocks-container');
       container.innerHTML = '';
@@ -420,10 +420,9 @@
       harvestStockForm();
       let payload = {};
       stockList.forEach(s => { payload[s.name] = { desc: s.desc, saleMonth: s.saleMonth, dividendMonth8: s.dividendMonth8, monthlyPrices: s.monthlyPrices }; });
-      socket.emit('admin:save_annual_stocks', payload);
+      socket.emit('admin:save_annual_stocks', { roomId: currentRoomId, updatedStocks: payload });
     }
 
-    // 定存操作
     function renderDepositCards() {
       const container = document.getElementById('annual-deposits-container');
       container.innerHTML = '';
@@ -470,10 +469,9 @@
 
     function saveAnnualDepositsScript() {
       harvestDepositForm();
-      socket.emit('admin:save_annual_deposits', depositList);
+      socket.emit('admin:save_annual_deposits', { roomId: currentRoomId, updatedDeposits: depositList });
     }
 
-    // 保險操作
     function renderInsuranceCards() {
       const container = document.getElementById('annual-insurances-container');
       container.innerHTML = '';
@@ -520,10 +518,9 @@
 
     function saveAnnualInsurancesScript() {
       harvestInsuranceForm();
-      socket.emit('admin:save_annual_insurances', insuranceList);
+      socket.emit('admin:save_annual_insurances', { roomId: currentRoomId, updatedInsurances: insuranceList });
     }
 
-    // 突發事件操作
     function renderEventList() {
       const container = document.getElementById('annual-events-container');
       container.innerHTML = '';
@@ -552,7 +549,7 @@
         payload[m] = { desc, gain, loss, claimInsuranceName };
       }
       eventList = payload;
-      socket.emit('admin:save_annual_events', payload);
+      socket.emit('admin:save_annual_events', { roomId: currentRoomId, updatedEvents: payload });
     }
 
     function applyConfig() {
@@ -570,20 +567,22 @@
           tuition: Number(document.getElementById('exp-tuition').value),
         }
       };
-      socket.emit('admin:update_config', cfg);
+      socket.emit('admin:update_config', { roomId: currentRoomId, newCfg: cfg });
     }
 
     socket.on('admin:msg', d => alert(d.text));
     socket.on('screen:alert', d => alert(`${d.title}\n\n${d.msg}`));
 
     socket.on('state:sync', (data) => {
+      // 確保只處理當前連線房間的資料
+      if (data.roomId && data.roomId !== currentRoomId) return;
+
       currentGameState = data.gameState;
       currentConfig = data.gameConfig;
       currentLeaderboard = data.leaderboard || [];
       currentListedStocks = data.listedStocks || [];
 
       document.getElementById('disp-month').innerText = `第 ${data.gameState.month} 個月 / 12`;
-      
       document.getElementById('salary-status').style.display = data.gameState.hasPaidSalaryThisMonth ? 'inline-block' : 'none';
       document.getElementById('exp-status').style.display = data.gameState.hasDeductedExpensesThisMonth ? 'inline-block' : 'none';
 
