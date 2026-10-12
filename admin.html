@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>理財模擬器 - 講師控制台</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b132b; color: #f8fafc; margin: 0; padding: 20px; }
+    .layout { display: grid; grid-template-columns: 460px 1fr; gap: 20px; max-width: 1750px; margin: 0 auto; }
+    .card { background: #1c2541; padding: 18px; border-radius: 12px; border: 1px solid #3a506b; margin-bottom: 16px; }
+    h2, h3, h4 { margin: 0 0 10px; color: #48cae4; }
+    .section-title { font-size: 13px; font-weight: bold; padding: 4px 10px; border-radius: 4px; margin-top: 12px; margin-bottom: 6px; display: inline-block; }
+    .sec-inc { background: #06d6a0; color: #000; }
+    .sec-exp { background: #ef476f; color: #fff; }
+    .sec-inv { background: #ffd166; color: #000; }
+    .sec-ctrl { background: #118ab2; color: #fff; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+    button { padding: 11px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.15s; }
+    button:hover { opacity: 0.88; transform: scale(0.99); }
+    .btn-green { background: #06d6a0; color: #0b132b; }
+    .btn-red { background: #ef476f; color: #fff; }
+    .btn-yellow { background: #ffd166; color: #000; }
+    .btn-orange { background: #f97316; color: #fff; }
+    .btn-blue { background: #48cae4; color: #000; }
+    .btn-darkred { background: #d90429; color: #fff; }
+    .btn-purple { background: #7209b7; color: #fff; }
+    .btn-teal { background: #14b8a6; color: #fff; }
+    .btn-full { width: 100%; margin-bottom: 6px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-top: 6px; }
+    input, textarea, select { width: 92%; padding: 6px; border-radius: 6px; border: 1px solid #475569; background: #0b132b; color: #fff; margin-top: 2px; font-size: 13px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #3a506b; }
+    th { color: #94a3b8; }
+    .badge { background: #48cae4; color: #0b132b; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+    .badge-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; font-weight: bold; }
+    .badge-paid { background: #06d6a0; color: #000; }
+    .badge-exp { background: #ef476f; color: #fff; }
+    
+    .script-item-row { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: grid; align-items: center; gap: 8px; }
+    .stock-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+    .price-month-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 6px; }
+    .price-month-box { text-align: center; font-size: 11px; color: #94a3b8; background: #1e293b; padding: 4px; border-radius: 4px; }
+    .price-month-box input { width: 85%; padding: 4px 2px; text-align: center; font-size: 12px; color: #38bdf8; font-weight: bold; }
+    .btn-del { background: #ef4444; color: white; padding: 5px 8px; font-size: 11px; border-radius: 4px; border: none; cursor: pointer; }
+
+    .event-month-row { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; display: grid; grid-template-columns: 75px 1.4fr 1.2fr 90px 90px; gap: 8px; align-items: center; }
+    .event-month-tag { background: #7209b7; color: white; font-weight: bold; font-size: 12px; text-align: center; padding: 4px 0; border-radius: 4px; }
+
+    .confirm-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; }
+    .confirm-box { background: #1c2541; border: 2px solid #ef476f; border-radius: 14px; padding: 24px; max-width: 520px; width: 90%; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .pending-list { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; margin: 14px 0; max-height: 240px; overflow-y: auto; }
+    .pending-item { font-size: 13px; color: #fca5a5; margin-bottom: 6px; display: flex; align-items: center; }
+    .pending-item::before { content: "⚠️"; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>🎮 課堂進度操控中心</h3>
+          <div>
+            <span class="badge" id="disp-month">第 1 個月</span>
+            <span id="salary-status" class="badge-tag badge-paid" style="display:none;">已發薪</span>
+            <span id="exp-status" class="badge-tag badge-exp" style="display:none;">已扣開銷</span>
+          </div>
+        </div>
+
+        <!-- 收入 -->
+        <span class="section-title sec-inc">&lt;收入&gt;</span>
+        <button class="btn-green btn-full" onclick="sendCmd('admin:action_salary')">💵 發薪 (每人每月限按一次)</button>
+        <div class="btn-grid">
+          <button class="btn-green" onclick="sendCmd('admin:action_deposit_interest')">🏦 定存月利率發放 (每人每月限按一次)</button>
+          <button class="btn-green" onclick="sendCmd('admin:action_stock_dividend')">📈 投資股利發放 (限8月)</button>
+        </div>
+
+        <!-- 支出 -->
+        <span class="section-title sec-exp">&lt;支出&gt;</span>
+        <button class="btn-red btn-full" onclick="sendCmd('admin:action_expenses')">🧾 固定開銷扣款 (每人每月限按一次)</button>
+        <div class="btn-grid">
+          <button class="btn-red" onclick="sendCmd('admin:action_deposit_deduct')">🏦 定存扣款 (每人每月限按一次)</button>
+          <button class="btn-red" onclick="sendCmd('admin:action_insurance_deduct')">🛡️ 保險扣款 (每人每月限按一次)</button>
+        </div>
+
+        <!-- 投資理財 -->
+        <span class="section-title sec-inv">&lt;投資理財&gt;</span>
+        <div class="btn-grid">
+          <button class="btn-yellow" onclick="sendCmd('admin:notify_stock')">📈 股票購買通知 (自動抓本月)</button>
+          <button class="btn-orange" onclick="sendCmd('admin:action_stock_fluctuation')">📊 本月股票漲幅異動通知 (自動調價)</button>
+        </div>
+        <div class="btn-grid">
+          <button class="btn-yellow" onclick="sendCmd('admin:notify_deposit')">🏦 定存詢問通知 (自動抓本月)</button>
+          <button class="btn-yellow" onclick="sendCmd('admin:notify_insurance')">🛡️ 保險詢問通知 (自動抓本月)</button>
+        </div>
+        <button class="btn-yellow btn-full" onclick="sendCmd('admin:notify_insurance_claim')">🩺 保險理賠通知 (需於本月事件後觸發)</button>
+
+        <!-- 進度控制 -->
+        <span class="section-title sec-ctrl">&lt;事件與進度控制&gt;</span>
+        <button class="btn-purple btn-full" onclick="sendCmd('admin:action_event')">⚡ 觸發本月突發事件 (每人每月限按一次)</button>
+        <div class="btn-grid" style="margin-top:6px;">
+          <button class="btn-blue" onclick="checkBeforeNextMonth()">⏭️ 結算進入下個月</button>
+          <button class="btn-darkred" onclick="if(confirm('確定重置全場遊戲進度？學員現金將歸 0！')) sendCmd('admin:reset')">🔄 重置遊戲進度</button>
+        </div>
+      </div>
+
+      <!-- 金融數值設定面板 -->
+      <div class="card">
+        <h3>⚙️ 金融數值設定面板</h3>
+        <label>每月固定薪資 ($)</label>
+        <input type="number" id="cfg-salary" value="38000">
+
+        <h4>🧾 9 大固定開銷項目 ($)</h4>
+        <div class="grid-2">
+          <div><label>1. 房租</label><input type="number" id="exp-rent" value="9000"></div>
+          <div><label>2. 水費</label><input type="number" id="exp-water" value="250"></div>
+          <div><label>3. 電費</label><input type="number" id="exp-electricity" value="900"></div>
+          <div><label>4. 瓦斯費</label><input type="number" id="exp-gas" value="400"></div>
+          <div><label>5. 手機網路</label><input type="number" id="exp-telecom" value="699"></div>
+          <div><label>6. 生活用品</label><input type="number" id="exp-supplies" value="1500"></div>
+          <div><label>7. 餐費</label><input type="number" id="exp-food" value="7500"></div>
+          <div><label>8. 交通油錢</label><input type="number" id="exp-transport" value="1200"></div>
+        </div>
+        <label>9. 學費 / 進修</label>
+        <input type="number" id="exp-tuition" value="3000">
+
+        <button class="btn-blue btn-full" style="margin-top:14px;" onclick="applyConfig()">💾 儲存薪資與開銷設定</button>
+      </div>
+    </div>
+
+    <!-- 右側面板 -->
+    <div>
+      <!-- 1. 股票操縱面板 -->
+      <div class="card" style="border: 2px solid #ffd166;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="color:#ffd166; margin:0;">📈 當年度股票操縱面板 (課前劇本預先設定)</h3>
+          <button class="btn-green" style="padding:6px 14px; font-size:12px;" onclick="addNewStockCard()">➕ 新增股票標的</button>
+        </div>
+        <div id="annual-stocks-container" style="margin-top:10px;"></div>
+        <button class="btn-yellow btn-full" style="padding:10px; font-size:13px;" onclick="saveAnnualStocksScript()">💾 儲存股票劇本設定</button>
+      </div>
+
+      <!-- 2. 定存操縱面板 -->
+      <div class="card" style="border: 2px solid #06d6a0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="color:#06d6a0; margin:0;">🏦 當年度定存操縱面板 (課前劇本預先設定)</h3>
+          <button class="btn-green" style="padding:6px 14px; font-size:12px;" onclick="addNewDepositCard()">➕ 新增定存方案</button>
+        </div>
+        <div id="annual-deposits-container"></div>
+        <button class="btn-green btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualDepositsScript()">💾 儲存定存劇本設定</button>
+      </div>
+
+      <!-- 3. 保險操縱面板 -->
+      <div class="card" style="border: 2px solid #38bdf8;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="color:#38bdf8; margin:0;">🛡️ 當年度保險操縱面板 (課前劇本預先設定)</h3>
+          <button class="btn-blue" style="padding:6px 14px; font-size:12px;" onclick="addNewInsuranceCard()">➕ 新增保單合約</button>
+        </div>
+        <div id="annual-insurances-container"></div>
+        <button class="btn-blue btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualInsurancesScript()">💾 儲存保險劇本設定</button>
+      </div>
+
+      <!-- 4. 突發事件操縱面板 -->
+      <div class="card" style="border: 2px solid #a855f7;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="color:#c084fc; margin:0;">⚡ 當年度突發事件操縱面板 (1 ~ 12 月劇本)</h3>
+        </div>
+        <div id="annual-events-container" style="margin-top:10px;"></div>
+        <button class="btn-purple btn-full" style="padding:10px; font-size:13px; margin-top:8px;" onclick="saveAnnualEventsScript()">💾 儲存突發事件劇本設定</button>
+      </div>
+
+      <!-- 5. 可編輯名稱 + 支援 Excel 匯出的學員排行榜 -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; width:65%;">
+            <label style="margin:0; font-weight:bold; color:#48cae4; white-space:nowrap; font-size:14px;">排行榜名稱：</label>
+            <input type="text" id="leaderboard-custom-title" value="🏆 學員資產排行榜" style="width:55%; padding:6px 10px; font-weight:bold; color:#ffd166;">
+            <button class="btn-teal" style="padding:6px 12px; font-size:12px;" onclick="saveLeaderboardTitle()">同步更名</button>
+          </div>
+          <!-- 📥 匯出 Excel (CSV) 按鈕 -->
+          <button class="btn-green" style="padding:8px 14px; font-size:13px;" onclick="exportToExcel()">📥 匯出成績與設定 (Excel)</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>名次</th>
+              <th>姓名</th>
+              <th>活期現金額度</th>
+              <th>股票最新市值 (總股數)</th>
+              <th>定存專案</th>
+              <th>投保險種</th>
+              <th>總資產淨值</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">等待學員登入...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結算防呆檢查彈窗 -->
+  <div class="confirm-overlay" id="confirm-modal">
+    <div class="confirm-box">
+      <h3 style="margin-top:0; color:#ef476f;">⚠️ 本月課堂進度尚未完全執行！</h3>
+      <p style="font-size:13px; color:#cbd5e1; line-height:1.5;">
+        系統依據劇本與本月進度檢查，發現以下操控中心按鈕尚未處理完成：
+      </p>
+      <div class="pending-list" id="pending-tasks-list"></div>
+      <p style="font-size:12px; color:#94a3b8;">
+        您要先返回操控中心處理這些項目，還是確認直接略過並進入下個月？
+      </p>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button class="btn-blue" style="padding:8px 16px;" onclick="closeConfirmModal()">🔙 返回本月處理</button>
+        <button class="btn-red" style="padding:8px 16px;" onclick="forceProceedNextMonth()">⏭️ 略過並直接結算</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentGameState = null;
+    let currentConfig = null;
+    let currentLeaderboard = [];
+    let currentListedStocks = [];
+
+    let stockList = [
+      { name: "科技龍頭ETF", saleMonth: 1, desc: "追蹤前50大權值科技股，成長爆發力強", dividendMonth8: 3.5, monthlyPrices: {1:50,2:52,3:55,4:51,5:58,6:62,7:65,8:60,9:68,10:72,11:70,12:75} },
+      { name: "民生高股息", saleMonth: 3, desc: "電信、超商與民生必需品龍頭，抗跌穩定", dividendMonth8: 2.0, monthlyPrices: {1:30,2:30,3:30,4:31,5:31,6:32,7:32,8:31,9:33,10:33,11:34,12:35} },
+      { name: "航運飆風股", saleMonth: 5, desc: "受國際航運運價影響極大，大起大落具投機性質", dividendMonth8: 5.0, monthlyPrices: {1:40,2:40,3:40,4:45,5:60,6:80,7:55,8:40,9:35,10:30,11:28,12:32} }
+    ];
+
+    let depositList = [
+      { name: "青年安心定存", saleMonth: 1, monthlyAmount: 5000, monthlyRate: 0.005 },
+      { name: "半年衝刺高利定存", saleMonth: 6, monthlyAmount: 8000, monthlyRate: 0.008 }
+    ];
+
+    let insuranceList = [
+      { name: "全方位安心醫療險", saleMonth: 1, monthlyFee: 1500, claimAmount: 15000 },
+      { name: "重大傷病守護專案", saleMonth: 4, monthlyFee: 3000, claimAmount: 40000 }
+    ];
+
+    let eventList = {
+      1: { desc: "📱 手機電池膨脹故障，更換原廠電池", gain: 0, loss: 1800, claimInsuranceName: "" },
+      2: { desc: "🧧 春節開工大吉，老闆發放開工紅包", gain: 2000, loss: 0, claimInsuranceName: "" },
+      3: { desc: "🛵 機車煞車皮耗損，進廠大保養換胎", gain: 0, loss: 2500, claimInsuranceName: "" },
+      4: { desc: "🦷 牙周突發急性發炎引流門診治療", gain: 0, loss: 3800, claimInsuranceName: "全方位安心醫療險" },
+      5: { desc: "🎉 統一發票幸運中獎入帳", gain: 1000, loss: 0, claimInsuranceName: "" },
+      6: { desc: "🤒 夏日突發嚴重熱衰竭急診就醫住院", gain: 0, loss: 5000, claimInsuranceName: "全方位安心醫療險" },
+      7: { desc: "🎁 摯友步入禮堂，致贈結婚禮金祝賀", gain: 0, loss: 3600, claimInsuranceName: "" },
+      8: { desc: "🌟 利用週末兼職外快教學津貼", gain: 4500, loss: 0, claimInsuranceName: "" },
+      9: { desc: "💻 工作筆電電源變壓器燒壞更換", gain: 0, loss: 2200, claimInsuranceName: "" },
+      10: { desc: "🏥 雨天意外摔傷韌帶斷裂手術治療", gain: 0, loss: 18000, claimInsuranceName: "重大傷病守護專案" },
+      11: { desc: "☕ 冬季氣溫驟降添購防寒羽絨大衣", gain: 0, loss: 2800, claimInsuranceName: "" },
+      12: { desc: "🏆 全年工作考核優等，發放年終獎金", gain: 15000, loss: 0, claimInsuranceName: "" }
+    };
+
+    function sendCmd(actionName) {
+      socket.emit(actionName);
+    }
+
+    function saveLeaderboardTitle() {
+      const title = document.getElementById('leaderboard-custom-title').value.trim();
+      if (!title) return alert('請輸入有效的排行榜名稱！');
+      socket.emit('admin:update_leaderboard_title', title);
+    }
+
+    // 📥 匯出 Excel (CSV 格式，Excel 原生雙擊開啟不亂碼)
+    function exportToExcel() {
+      if (!currentLeaderboard || currentLeaderboard.length === 0) {
+        return alert('⚠️ 目前尚無學員登入數據，無法匯出！');
+      }
+
+      const curMonth = currentGameState ? currentGameState.month : 1;
+      const titleName = (currentConfig && currentConfig.leaderboardTitle) ? currentConfig.leaderboardTitle : "學員資產排行榜";
+      
+      let csvContent = "\uFEFF"; // UTF-8 BOM，防止 Excel 開啟繁體中文時產生亂碼
+
+      // 表頭
+      csvContent += `${titleName} (第 ${curMonth} 個月結算報告)\n\n`;
+      csvContent += `名次,學員姓名,活期現金(可支配),定存累計本金,股票最新市值,總持股數,總資產淨值,定存專案,持有保險\n`;
+
+      // 填入學員排行數據
+      currentLeaderboard.forEach((p, idx) => {
+        let depStr = Object.keys(p.deposits || {}).join(';') || '無';
+        let insStr = Object.keys(p.insurances || {}).join(';') || '無';
+        csvContent += `${idx + 1},"${p.name}",${p.cash},${p.depositTotalAmount || 0},${p.stockTotalVal || 0},${p.totalSharesCount || 0},${p.totalAssets},"${depStr}","${insStr}"\n`;
+      });
+
+      // 附加當前場次設定參數
+      if (currentConfig) {
+        csvContent += `\n--- 遊戲參數設定紀錄 ---\n`;
+        csvContent += `每月固定薪資,${currentConfig.salary}\n`;
+        csvContent += `固定開銷項目,房租: ${currentConfig.expenses.rent}; 水費: ${currentConfig.expenses.water}; 電費: ${currentConfig.expenses.electricity}; 瓦斯: ${currentConfig.expenses.gas}; 網路: ${currentConfig.expenses.telecom}; 生活用品: ${currentConfig.expenses.supplies}; 餐費: ${currentConfig.expenses.food}; 交通: ${currentConfig.expenses.transport}; 進修: ${currentConfig.expenses.tuition}\n`;
+      }
+
+      // 觸發瀏覽器下載檔案
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `理財模擬器成績單_第${curMonth}月_${timestamp}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function checkBeforeNextMonth() {
+      if (!currentGameState || !currentConfig) {
+        return sendCmd('admin:next_month');
+      }
+
+      const m = currentGameState.month;
+      let pendingTasks = [];
+
+      if (!currentGameState.hasPaidSalaryThisMonth) {
+        pendingTasks.push("【收入】尚未點擊「💵 發薪」發放本月固定薪資");
+      }
+
+      if (!currentGameState.hasDeductedExpensesThisMonth) {
+        pendingTasks.push("【支出】尚未點擊「🧾 固定開銷扣款」扣除9大生活開支");
+      }
+
+      let stockSaleThisMonth = Object.keys(currentConfig.annualStocks || {}).find(name => {
+        return Number(currentConfig.annualStocks[name].saleMonth) === m;
+      });
+      if (stockSaleThisMonth && !currentGameState.hasNotifiedStockThisMonth) {
+        pendingTasks.push(`【股票劇本】本月預定發售【${stockSaleThisMonth}】，尚未點擊「📈 股票購買通知」`);
+      }
+
+      if (m >= 2) {
+        if (currentListedStocks.length > 0 && !currentGameState.hasNotifiedStockFluctuationThisMonth) {
+          pendingTasks.push("【股票劇本】市場已有上市股票，尚未點擊「📊 本月股票漲幅異動通知」更新行情");
+        }
+      }
+
+      if (m === 8 && !currentGameState.hasPaidDividendMonth8) {
+        pendingTasks.push("【投資收益】目前為第 8 個月除息月，尚未點擊「📈 投資股利發放」");
+      }
+
+      let depositSaleThisMonth = (currentConfig.annualDeposits || []).find(d => Number(d.saleMonth) === m);
+      if (depositSaleThisMonth && !currentGameState.hasNotifiedDepositThisMonth) {
+        pendingTasks.push(`【定存劇本】本月預定開放【${depositSaleThisMonth.name}】，尚未點擊「🏦 定存詢問通知」`);
+      }
+
+      if (m >= 2) {
+        let hasEligibleInterest = currentLeaderboard.some(p => {
+          return Object.values(p.deposits || {}).some(dep => m > dep.startMonth);
+        });
+        if (hasEligibleInterest && !currentGameState.hasPaidDepositInterestThisMonth) {
+          pendingTasks.push("【定存收益】學員有累計定存符合次期計息資格，尚未點擊「🏦 定存月利率發放」");
+        }
+      }
+
+      if (m >= 2) {
+        let hasActiveDeposits = currentLeaderboard.some(p => {
+          return Object.values(p.deposits || {}).some(dep => m > dep.startMonth);
+        });
+        if (hasActiveDeposits && !currentGameState.hasDeductedDepositThisMonth) {
+          pendingTasks.push("【定存扣款】有學員簽署定存合約進入續期，尚未點擊「🏦 定存扣款」執行本期儲蓄");
+        }
+      }
+
+      let insSaleThisMonth = (currentConfig.annualInsurances || []).find(i => Number(i.saleMonth) === m);
+      if (insSaleThisMonth && !currentGameState.hasNotifiedInsuranceThisMonth) {
+        pendingTasks.push(`【保險劇本】本月預定開放【${insSaleThisMonth.name}】，尚未點擊「🛡️ 保險詢問通知」`);
+      }
+
+      if (m >= 2) {
+        let hasActiveInsurances = currentLeaderboard.some(p => {
+          return Object.values(p.insurances || {}).some(ins => m > (ins.startMonth || 1));
+        });
+        if (hasActiveInsurances && !currentGameState.hasDeductedInsuranceThisMonth) {
+          pendingTasks.push("【保險扣款】有學員持有續期有效保單，尚未點擊「🛡️ 保險扣款」扣繳續期保費");
+        }
+      }
+
+      if (!currentGameState.hasTriggeredEventThisMonth) {
+        pendingTasks.push("【事件劇本】本月生活突發事件尚未執行，尚未點擊「⚡ 觸發本月突發事件」");
+      } else {
+        let curEvt = (currentConfig.annualEvents || {})[m];
+        if (curEvt && curEvt.claimInsuranceName && curEvt.claimInsuranceName.trim() !== "") {
+          if (!currentGameState.hasClaimedInsuranceThisMonth) {
+            pendingTasks.push(`【保險理賠】本月突發事件符合「${curEvt.claimInsuranceName}」，尚未點擊「🩺 保險理賠通知」`);
+          }
+        }
+      }
+
+      if (pendingTasks.length > 0) {
+        showConfirmModal(pendingTasks);
+      } else {
+        sendCmd('admin:next_month');
+      }
+    }
+
+    function showConfirmModal(tasks) {
+      const listDiv = document.getElementById('pending-tasks-list');
+      listDiv.innerHTML = tasks.map(t => `<div class="pending-item">${t}</div>`).join('');
+      document.getElementById('confirm-modal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirm-modal').style.display = 'none';
+    }
+
+    function forceProceedNextMonth() {
+      closeConfirmModal();
+      sendCmd('admin:next_month');
+    }
+
+    // 股票
+    function renderStockCards() {
+      const container = document.getElementById('annual-stocks-container');
+      container.innerHTML = '';
+      stockList.forEach((s, idx) => {
+        let card = document.createElement('div');
+        card.className = 'stock-card';
+        let monthBoxes = '';
+        for (let m = 1; m <= 12; m++) {
+          let pVal = (s.monthlyPrices && s.monthlyPrices[m] !== undefined) ? s.monthlyPrices[m] : 50;
+          monthBoxes += `<div class="price-month-box">${m}月<br><input type="number" id="stk-${idx}-m-${m}" value="${pVal}"></div>`;
+        }
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <strong style="color:#ffd166; font-size:14px; white-space:nowrap;">標的 #${idx+1}</strong>
+            <input type="text" id="stk-name-${idx}" value="${s.name}" style="font-weight:bold; color:#38bdf8; width:45%;">
+            <span style="font-size:12px; color:#94a3b8; white-space:nowrap;">開賣：第</span>
+            <input type="number" id="stk-salemonth-${idx}" value="${s.saleMonth || 1}" min="1" max="12" style="width:45px; text-align:center;">
+            <span style="font-size:12px; color:#94a3b8;">月</span>
+            <button class="btn-del" onclick="removeStockCard(${idx})">🗑️ 刪除</button>
+          </div>
+          <label style="margin-top:8px;"><strong>📝 股票性質描述：</strong></label>
+          <input type="text" id="stk-desc-${idx}" value="${s.desc || ''}">
+          <label style="margin-top:8px;">8月除息現金股利 ($/股)：</label>
+          <input type="number" step="0.1" id="stk-div-${idx}" value="${s.dividendMonth8 || 2.0}" style="width:120px;">
+          <label style="margin-top:10px;"><strong>📊 1 ~ 12 月預設股價走勢 ($)：</strong></label>
+          <div class="price-month-grid">${monthBoxes}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function addNewStockCard() {
+      harvestStockForm();
+      const newIdx = stockList.length + 1;
+      stockList.push({
+        name: `新上市股票_${newIdx}`,
+        saleMonth: Math.min(newIdx, 12),
+        desc: "請填寫此股票之基本面與題材特性",
+        dividendMonth8: 2.5,
+        monthlyPrices: { 1:50, 2:50, 3:50, 4:50, 5:50, 6:50, 7:50, 8:50, 9:50, 10:50, 11:50, 12:50 }
+      });
+      renderStockCards();
+    }
+
+    function removeStockCard(idx) {
+      if (stockList.length <= 1) return alert('⚠️ 至少需保留 1 檔股票標的！');
+      if (confirm(`確定要刪除標的「${stockList[idx].name}」嗎？`)) {
+        harvestStockForm();
+        stockList.splice(idx, 1);
+        renderStockCards();
+      }
+    }
+
+    function harvestStockForm() {
+      stockList.forEach((s, idx) => {
+        let nameElem = document.getElementById(`stk-name-${idx}`);
+        if (nameElem) s.name = nameElem.value.trim();
+        let saleMonthElem = document.getElementById(`stk-salemonth-${idx}`);
+        if (saleMonthElem) s.saleMonth = Number(saleMonthElem.value) || 1;
+        let descElem = document.getElementById(`stk-desc-${idx}`);
+        if (descElem) s.desc = descElem.value.trim();
+        let divElem = document.getElementById(`stk-div-${idx}`);
+        if (divElem) s.dividendMonth8 = Number(divElem.value) || 0;
+        let prices = {};
+        for (let m = 1; m <= 12; m++) {
+          let pElem = document.getElementById(`stk-${idx}-m-${m}`);
+          prices[m] = pElem ? (Number(pElem.value) || 50) : 50;
+        }
+        s.monthlyPrices = prices;
+      });
+    }
+
+    function saveAnnualStocksScript() {
+      harvestStockForm();
+      let payload = {};
+      stockList.forEach(s => {
+        payload[s.name] = { desc: s.desc, saleMonth: s.saleMonth, dividendMonth8: s.dividendMonth8, monthlyPrices: s.monthlyPrices };
+      });
+      socket.emit('admin:save_annual_stocks', payload);
+    }
+
+    // 定存
+    function renderDepositCards() {
+      const container = document.getElementById('annual-deposits-container');
+      container.innerHTML = '';
+      depositList.forEach((d, idx) => {
+        let row = document.createElement('div');
+        row.className = 'script-item-row';
+        row.style.gridTemplateColumns = '1fr 90px 110px 120px 60px';
+        row.innerHTML = `
+          <div><label style="margin:0;">定存專案名稱</label><input type="text" id="dep-name-${idx}" value="${d.name}"></div>
+          <div><label style="margin:0;">開賣月份</label><input type="number" id="dep-month-${idx}" value="${d.saleMonth}" min="1" max="12"></div>
+          <div><label style="margin:0;">每期存入 ($)</label><input type="number" id="dep-amt-${idx}" value="${d.monthlyAmount}"></div>
+          <div><label style="margin:0;">月利率 (例0.005)</label><input type="number" step="0.001" id="dep-rate-${idx}" value="${d.monthlyRate}"></div>
+          <div style="text-align:right;"><label style="margin:0;">&nbsp;</label><button class="btn-del" onclick="removeDepositCard(${idx})">刪除</button></div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addNewDepositCard() {
+      harvestDepositForm();
+      depositList.push({ name: `定存專案_${depositList.length + 1}`, saleMonth: 6, monthlyAmount: 5000, monthlyRate: 0.006 });
+      renderDepositCards();
+    }
+
+    function removeDepositCard(idx) {
+      if (depositList.length <= 1) return alert('⚠️ 至少需保留 1 個定存方案！');
+      harvestDepositForm();
+      depositList.splice(idx, 1);
+      renderDepositCards();
+    }
+
+    function harvestDepositForm() {
+      depositList.forEach((d, idx) => {
+        let n = document.getElementById(`dep-name-${idx}`);
+        if (n) d.name = n.value.trim();
+        let m = document.getElementById(`dep-month-${idx}`);
+        if (m) d.saleMonth = Number(m.value) || 1;
+        let a = document.getElementById(`dep-amt-${idx}`);
+        if (a) d.monthlyAmount = Number(a.value) || 5000;
+        let r = document.getElementById(`dep-rate-${idx}`);
+        if (r) d.monthlyRate = Number(r.value) || 0.005;
+      });
+    }
+
+    function saveAnnualDepositsScript() {
+      harvestDepositForm();
+      socket.emit('admin:save_annual_deposits', depositList);
+    }
+
+    // 保險
+    function renderInsuranceCards() {
+      const container = document.getElementById('annual-insurances-container');
+      container.innerHTML = '';
+      insuranceList.forEach((ins, idx) => {
+        let row = document.createElement('div');
+        row.className = 'script-item-row';
+        row.style.gridTemplateColumns = '1fr 90px 110px 120px 60px';
+        row.innerHTML = `
+          <div><label style="margin:0;">保單名稱</label><input type="text" id="ins-name-${idx}" value="${ins.name}"></div>
+          <div><label style="margin:0;">開賣月份</label><input type="number" id="ins-month-${idx}" value="${ins.saleMonth}" min="1" max="12"></div>
+          <div><label style="margin:0;">每期保費 ($)</label><input type="number" id="ins-fee-${idx}" value="${ins.monthlyFee}"></div>
+          <div><label style="margin:0;">理賠金額 ($)</label><input type="number" id="ins-claim-${idx}" value="${ins.claimAmount}"></div>
+          <div style="text-align:right;"><label style="margin:0;">&nbsp;</label><button class="btn-del" onclick="removeInsuranceCard(${idx})">刪除</button></div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addNewInsuranceCard() {
+      harvestInsuranceForm();
+      insuranceList.push({ name: `特定醫療保單_${insuranceList.length + 1}`, saleMonth: 4, monthlyFee: 2000, claimAmount: 25000 });
+      renderInsuranceCards();
+    }
+
+    function removeInsuranceCard(idx) {
+      if (insuranceList.length <= 1) return alert('⚠️ 至少需保留 1 個保險專案！');
+      harvestInsuranceForm();
+      insuranceList.splice(idx, 1);
+      renderInsuranceCards();
+    }
+
+    function harvestInsuranceForm() {
+      insuranceList.forEach((ins, idx) => {
+        let n = document.getElementById(`ins-name-${idx}`);
+        if (n) ins.name = n.value.trim();
+        let m = document.getElementById(`ins-month-${idx}`);
+        if (m) ins.saleMonth = Number(m.value) || 1;
+        let f = document.getElementById(`ins-fee-${idx}`);
+        if (f) ins.monthlyFee = Number(f.value) || 1500;
+        let c = document.getElementById(`ins-claim-${idx}`);
+        if (c) ins.claimAmount = Number(c.value) || 15000;
+      });
+    }
+
+    function saveAnnualInsurancesScript() {
+      harvestInsuranceForm();
+      socket.emit('admin:save_annual_insurances', insuranceList);
+    }
+
+    // 突發事件
+    function renderEventList() {
+      const container = document.getElementById('annual-events-container');
+      container.innerHTML = '';
+      for (let m = 1; m <= 12; m++) {
+        let evt = eventList[m] || { desc: "生活平順無事故", gain: 0, loss: 0, claimInsuranceName: "" };
+        let row = document.createElement('div');
+        row.className = 'event-month-row';
+        row.innerHTML = `
+          <div class="event-month-tag">第 ${m} 個月</div>
+          <div><label style="margin:0; font-size:11px;">事件描述</label><input type="text" id="evt-desc-${m}" value="${evt.desc}" style="width:96%;"></div>
+          <div><label style="margin:0; font-size:11px; color:#38bdf8;">對應理賠保單 (選填)</label><input type="text" id="evt-ins-${m}" value="${evt.claimInsuranceName || ''}" placeholder="如：全方位安心醫療險" style="width:95%;"></div>
+          <div><label style="margin:0; font-size:11px; color:#4ade80;">獲得 (+$)</label><input type="number" id="evt-gain-${m}" value="${evt.gain || 0}" style="width:85%; color:#4ade80; font-weight:bold;"></div>
+          <div><label style="margin:0; font-size:11px; color:#f87171;">損失 (-$)</label><input type="number" id="evt-loss-${m}" value="${evt.loss || 0}" style="width:85%; color:#f87171; font-weight:bold;"></div>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    function saveAnnualEventsScript() {
+      let payload = {};
+      for (let m = 1; m <= 12; m++) {
+        let desc = document.getElementById(`evt-desc-${m}`).value.trim() || `第 ${m} 個月突發事件`;
+        let claimInsuranceName = document.getElementById(`evt-ins-${m}`).value.trim();
+        let gain = Number(document.getElementById(`evt-gain-${m}`).value) || 0;
+        let loss = Number(document.getElementById(`evt-loss-${m}`).value) || 0;
+        payload[m] = { desc, gain, loss, claimInsuranceName };
+      }
+      eventList = payload;
+      socket.emit('admin:save_annual_events', payload);
+    }
+
+    function applyConfig() {
+      const cfg = {
+        salary: Number(document.getElementById('cfg-salary').value),
+        expenses: {
+          rent: Number(document.getElementById('exp-rent').value),
+          water: Number(document.getElementById('exp-water').value),
+          electricity: Number(document.getElementById('exp-electricity').value),
+          gas: Number(document.getElementById('exp-gas').value),
+          telecom: Number(document.getElementById('exp-telecom').value),
+          supplies: Number(document.getElementById('exp-supplies').value),
+          food: Number(document.getElementById('exp-food').value),
+          transport: Number(document.getElementById('exp-transport').value),
+          tuition: Number(document.getElementById('exp-tuition').value),
+        }
+      };
+      socket.emit('admin:update_config', cfg);
+    }
+
+    socket.on('admin:msg', d => alert(d.text));
+    socket.on('screen:alert', d => alert(`${d.title}\n\n${d.msg}`));
+
+    socket.on('state:sync', (data) => {
+      currentGameState = data.gameState;
+      currentConfig = data.gameConfig;
+      currentLeaderboard = data.leaderboard || [];
+      currentListedStocks = data.listedStocks || [];
+
+      document.getElementById('disp-month').innerText = `第 ${data.gameState.month} 個月 / 12`;
+      
+      const salaryTag = document.getElementById('salary-status');
+      salaryTag.style.display = data.gameState.hasPaidSalaryThisMonth ? 'inline-block' : 'none';
+
+      const expTag = document.getElementById('exp-status');
+      expTag.style.display = data.gameState.hasDeductedExpensesThisMonth ? 'inline-block' : 'none';
+
+      if (data.gameConfig) {
+        if (data.gameConfig.leaderboardTitle) {
+          document.getElementById('leaderboard-custom-title').value = data.gameConfig.leaderboardTitle;
+        }
+        if (data.gameConfig.annualStocks) {
+          let keys = Object.keys(data.gameConfig.annualStocks);
+          if (keys.length > 0 && stockList.length === 3 && stockList[0].name === "科技龍頭ETF") {
+            stockList = keys.map(k => ({ name: k, ...data.gameConfig.annualStocks[k] }));
+            renderStockCards();
+          }
+        }
+        if (data.gameConfig.annualDeposits) {
+          depositList = data.gameConfig.annualDeposits;
+          renderDepositCards();
+        }
+        if (data.gameConfig.annualInsurances) {
+          insuranceList = data.gameConfig.annualInsurances;
+          renderInsuranceCards();
+        }
+        if (data.gameConfig.annualEvents) {
+          eventList = data.gameConfig.annualEvents;
+          renderEventList();
+        }
+      }
+
+      const tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = '';
+      data.leaderboard.forEach((p, idx) => {
+        let depList = Object.keys(p.deposits).join(', ') || '無';
+        let insList = Object.keys(p.insurances).join(', ') || '無';
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>#${idx + 1}</td>
+          <td><strong>${p.name}</strong></td>
+          <td style="color:#06d6a0; font-weight:bold;">$${p.cash.toLocaleString()}</td>
+          <td>$${p.stockTotalVal.toLocaleString()} (${p.totalSharesCount} 股)</td>
+          <td>${depList}</td>
+          <td>${insList}</td>
+          <td style="color:#48cae4; font-weight:bold;">$${p.totalAssets.toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+
+    renderStockCards();
+    renderDepositCards();
+    renderInsuranceCards();
+    renderEventList();
+  </script>
+</body>
+</html>

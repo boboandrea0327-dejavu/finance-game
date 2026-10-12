@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學員個人財務生活儀表板</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; margin: 0; padding: 18px; }
+    .card { background: white; max-width: 900px; margin: 0 auto 16px; padding: 22px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    h1, h2, h3 { color: #0f172a; margin-top: 0; }
+    
+    /* 4 大核心指標橫向排排站 */
+    .grid-stats-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .stat-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 8px; border-radius: 12px; text-align: center; }
+    .stat-label { font-size: 11.5px; color: #64748b; margin-bottom: 4px; font-weight: bold; }
+    .stat-val { font-size: 20px; font-weight: bold; color: #0f172a; }
+    .highlight-cash { color: #0284c7; }
+    .highlight-dep { color: #059669; }
+    .stat-sub { font-size: 11px; margin-top: 4px; font-weight: bold; }
+    
+    .portfolio-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-top: 10px; font-size: 13px; line-height: 1.7; }
+    .project-item { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-top: 6px; }
+    .badge-month { background: #0284c7; color: white; padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 6px; display: inline-block; }
+    .badge-blue-tag { background: #0284c7; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11.5px; margin-right: 6px; display: inline-block; }
+    .badge-green-tag { background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11.5px; margin-right: 6px; display: inline-block; }
+    .blue-bold-text { color: #0284c7; font-weight: bold; margin-left: 6px; }
+    
+    .stock-batch-item { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 12px; }
+    .log-box { background: #fffbeb; border: 1px solid #fef3c7; padding: 14px; border-radius: 10px; margin-top: 14px; max-height: 260px; overflow-y: auto; }
+    .log-item { font-size: 12.5px; color: #92400e; margin-bottom: 6px; border-bottom: 1px dashed #fde68a; padding-bottom: 5px; line-height: 1.5; }
+
+    .profit-up { color: #dc2626 !important; font-weight: bold; }
+    .profit-down { color: #16a34a !important; font-weight: bold; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+    .modal { background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    button.btn-primary { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 12px; }
+    button.btn-close { width: 100%; padding: 8px; background: #e2e8f0; color: #334155; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; }
+    input[type="number"] { width: 92%; padding: 8px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; }
+    .stock-desc-tag { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 8px 10px; border-radius: 8px; margin: 8px 0; font-size: 12px; line-height: 1.4; }
+
+    /* 月結算榮譽榜彈窗樣式 */
+    .podium-box { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin: 20px 0 10px; }
+    .podium-item { flex: 1; text-align: center; border-radius: 10px; padding: 12px 6px; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .podium-1 { background: linear-gradient(135deg, #f59e0b, #d97706); height: 110px; order: 2; }
+    .podium-2 { background: linear-gradient(135deg, #94a3b8, #64748b); height: 90px; order: 1; }
+    .podium-3 { background: linear-gradient(135deg, #b45309, #78350f); height: 80px; order: 3; }
+    .podium-rank { font-size: 20px; font-weight: bold; margin-bottom: 2px; }
+    .podium-name { font-size: 14px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .podium-assets { font-size: 12px; margin-top: 4px; opacity: 0.95; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- 登入卡片 -->
+  <div class="card" id="login-box">
+    <h2>🌱 歡迎參加理財生活挑戰</h2>
+    <p style="color:#64748b; font-size:13px;">登入後帳戶初始現金為 $0，等待教師發放第一個月薪資！</p>
+    <input type="text" id="player-name" placeholder="請輸入姓名或座號" style="width:94%; padding:12px; font-size:16px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:12px;">
+    <button class="btn-primary" onclick="joinGame()">進入挑戰</button>
+  </div>
+
+  <!-- 學員主面板 -->
+  <div class="card" id="dashboard" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 id="disp-name" style="margin:0;">學員</h2>
+      <span id="disp-month" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:8px; font-weight:bold;">第 1 個月</span>
+    </div>
+
+    <!-- 4 大核心指標橫向排排站 -->
+    <div class="grid-stats-4">
+      <div class="stat-box">
+        <div class="stat-label">💰 活期現金額度</div>
+        <div class="stat-val highlight-cash" id="disp-cash">$0</div>
+        <div class="stat-sub" style="color:#64748b;">自由支配水位</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">🏦 定存累計總額</div>
+        <div class="stat-val highlight-dep" id="disp-dep-val">$0</div>
+        <div class="stat-sub" style="color:#64748b;">鎖定儲蓄本金</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">📈 股票庫存總市值</div>
+        <div class="stat-val" id="disp-stock-val">$0</div>
+        <div class="stat-sub" id="disp-stock-roi">成本 $0 (0.0%)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">🏆 個人總資產</div>
+        <div class="stat-val" id="disp-total">$0</div>
+        <div class="stat-sub" style="color:#64748b;">現金+定存+股票</div>
+      </div>
+    </div>
+
+    <!-- 持股與專案明細 -->
+    <h3>💼 個人持股與金融專案明細</h3>
+    <div class="portfolio-box">
+      <strong>📈 股票分批持股庫存：</strong>
+      <div id="disp-stocks" style="margin-top:6px;">尚無持股</div>
+    </div>
+    <div class="portfolio-box">
+      <strong>🏦 定存專案：</strong>
+      <div id="disp-deposits" style="margin-top:4px;">尚未開立定存</div>
+    </div>
+    <div class="portfolio-box">
+      <strong>🛡️ 保險保障：</strong>
+      <div id="disp-insurances" style="margin-top:4px;">尚未購買保險</div>
+    </div>
+
+    <!-- 即時對帳單 -->
+    <h3>📬 本期收支與活動即時對帳單（含逐筆現金結存紀錄）</h3>
+    <div class="log-box" id="notification-box">
+      <div style="font-size:12px; color:#92400e;">等待教師操作指令...</div>
+    </div>
+  </div>
+
+  <!-- 彈窗 1：股票購買 -->
+  <div class="modal-overlay" id="modal-stock">
+    <div class="modal">
+      <h3 style="margin-top:0;">📈 股票公開發售通知</h3>
+      <div id="stk-desc-box" class="stock-desc-tag"></div>
+      <p style="font-size:13px; color:#475569;" id="stk-info"></p>
+      <label style="font-size:12px;">申購股數：</label>
+      <input type="number" id="buy-shares" value="10" min="1">
+      <button class="btn-primary" onclick="confirmBuyStock()">確認申購（由活期現金扣款）</button>
+      <button class="btn-close" onclick="closeModal('modal-stock')">暫不考慮 (關閉)</button>
+    </div>
+  </div>
+
+  <!-- 彈窗 2：定存專案 -->
+  <div class="modal-overlay" id="modal-deposit">
+    <div class="modal">
+      <h3 style="margin-top:0;">🏦 定存專案詢問通知</h3>
+      <p style="font-size:13px; color:#475569;" id="dep-info"></p>
+      <button class="btn-primary" onclick="confirmDeposit()">確認開立定存 (存入首期款並列入總資產)</button>
+      <button class="btn-close" onclick="closeModal('modal-deposit')">暫不需要 (關閉)</button>
+    </div>
+  </div>
+
+  <!-- 彈窗 3：保險詢問 -->
+  <div class="modal-overlay" id="modal-insurance">
+    <div class="modal">
+      <h3 style="margin-top:0;">🛡️ 醫療保險詢問通知</h3>
+      <p style="font-size:13px; color:#475569;" id="ins-info"></p>
+      <button class="btn-primary" onclick="confirmInsurance()">確認簽署投保 (當下扣除首期保費)</button>
+      <button class="btn-close" onclick="closeModal('modal-insurance')">暫不需要 (關閉)</button>
+    </div>
+  </div>
+
+  <!-- 月結算前三名榮譽榜彈窗 -->
+  <div class="modal-overlay" id="modal-settlement">
+    <div class="modal" style="text-align:center; max-width:480px;">
+      <h2 id="settle-title" style="margin:0; color:#0284c7;">🎉 第 1 個月結算完成！</h2>
+      <p id="settle-subtitle" style="font-size:13px; color:#64748b; margin:6px 0 16px;">🏆 截至當前資產排行前三名</p>
+      
+      <div class="podium-box" id="podium-container"></div>
+
+      <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('modal-settlement')">進入新月份挑戰！</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentBuyingStockName = '';
+    let currentInsurancePlanName = '';
+    let myCurrentData = null;
+    let lastKnownCash = null;
+    let previousNotificationsCount = 0;
+
+    // --- 音效與人聲語音合成引擎 ---
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // 人聲朗讀語音合成函式 (支援：female 女聲 / male 男聲 / baby 嬰兒幼童聲)
+    function speakText(text, role = 'female') {
+      try {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-TW';
+
+        if (role === 'baby') {
+          // 清純稚嫩的嬰兒/幼童聲：音高極高、語速微快活潑
+          utter.pitch = 1.95;
+          utter.rate = 1.15;
+        } else if (role === 'female') {
+          // 清脆女聲
+          utter.pitch = 1.35;
+          utter.rate = 1.05;
+        } else {
+          // 沉穩男聲
+          utter.pitch = 0.72;
+          utter.rate = 0.95;
+        }
+
+        const voices = window.speechSynthesis.getVoices();
+        const zhVoices = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn'));
+        if (zhVoices.length > 0) {
+          if (role === 'male') {
+            const mv = zhVoices.find(v => v.name.includes('Male') || v.name.includes('Yun') || v.name.includes('Zhi') || v.name.includes('Kangkang'));
+            if (mv) utter.voice = mv;
+          } else {
+            const fv = zhVoices.find(v => v.name.includes('Female') || v.name.includes('Hsiao') || v.name.includes('Mei') || v.name.includes('Yating'));
+            if (fv) utter.voice = fv;
+          }
+        }
+
+        window.speechSynthesis.speak(utter);
+      } catch (e) { console.log(e); }
+    }
+
+    // 1. 現金增加音效（約 2.0 秒）：金幣入袋聲 + 大三和弦共振
+    function playCashInSound() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        const coinNotes = [659.25, 783.99, 987.77, 1174.66, 1318.51];
+        coinNotes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.11);
+          gain.gain.setValueAtTime(0.001, now + i * 0.11);
+          gain.gain.linearRampToValueAtTime(0.2, now + i * 0.11 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.22);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.11);
+          osc.stop(now + i * 0.11 + 0.23);
+        });
+
+        const chordNotes = [523.25, 659.25, 783.99, 1046.50];
+        chordNotes.forEach((freq) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + 0.58);
+          gain.gain.setValueAtTime(0.001, now + 0.58);
+          gain.gain.linearRampToValueAtTime(0.16, now + 0.68);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + 0.58);
+          osc.stop(now + 2.05);
+        });
+      } catch (e) { console.log(e); }
+    }
+
+    // 2. 現金減少音效（約 2.0 秒）：沉重下墜鋸齒波 + 低頻心痛扣款
+    function playCashOutSound() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 1.2);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+        filter.frequency.exponentialRampToValueAtTime(150, now + 1.8);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 2.05);
+
+        const subOsc = ctx.createOscillator();
+        const subGain = ctx.createGain();
+        subOsc.type = 'sine';
+        subOsc.frequency.setValueAtTime(130, now);
+        subOsc.frequency.exponentialRampToValueAtTime(45, now + 0.8);
+        subGain.gain.setValueAtTime(0.3, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+        subOsc.connect(subGain);
+        subGain.connect(ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 1.55);
+      } catch (e) { console.log(e); }
+    }
+
+    // 3. 月結算專屬音效（約 2.0 秒）：凱旋吹號與勝利宏亮和弦
+    function playSettlementFanfareSound() {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        const trumpetNotes = [
+          { f: 392.00, t: 0.0, d: 0.22 },
+          { f: 523.25, t: 0.24, d: 0.22 },
+          { f: 659.25, t: 0.48, d: 0.35 }
+        ];
+
+        trumpetNotes.forEach(n => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(n.f, now + n.t);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1600, now + n.t);
+
+          gain.gain.setValueAtTime(0.001, now + n.t);
+          gain.gain.linearRampToValueAtTime(0.18, now + n.t + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + n.t);
+          osc.stop(now + n.t + n.d + 0.05);
+        });
+
+        const triumphChord = [523.25, 659.25, 783.99, 1046.50];
+        triumphChord.forEach(f => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now + 0.78);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1400, now + 0.78);
+
+          gain.gain.setValueAtTime(0.001, now + 0.78);
+          gain.gain.linearRampToValueAtTime(0.16, now + 0.9);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(now + 0.78);
+          osc.stop(now + 2.05);
+        });
+      } catch (e) { console.log(e); }
+    }
+
+    function joinGame() {
+      const name = document.getElementById('player-name').value.trim();
+      if (!name) return alert('請輸入姓名或座號！');
+      getAudioContext();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+      }
+      socket.emit('player:join', name);
+      document.getElementById('login-box').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('disp-name').innerText = `👤 ${name}`;
+    }
+
+    socket.on('player:msg', d => alert(d.text));
+    socket.on('screen:alert', d => alert(`${d.title}\n\n${d.msg}`));
+
+    socket.on('screen:show_month_settlement', (data) => {
+      playSettlementFanfareSound();
+      document.getElementById('settle-title').innerText = data.isFinal ? data.title : `🎉 第 ${data.closedMonth} 個月結算完成！`;
+      document.getElementById('settle-subtitle').innerText = `${data.title}（前三名榮譽榜）`;
+
+      const pBox = document.getElementById('podium-container');
+      pBox.innerHTML = '';
+
+      const medalMap = { 1: { class: 'podium-1', icon: '🥇 冠軍' }, 2: { class: 'podium-2', icon: '🥈 亞軍' }, 3: { class: 'podium-3', icon: '🥉 季軍' } };
+
+      data.topThree.forEach((p) => {
+        let m = medalMap[p.rank] || { class: 'podium-2', icon: `#${p.rank}` };
+        let item = document.createElement('div');
+        item.className = `podium-item ${m.class}`;
+        item.innerHTML = `
+          <div class="podium-rank">${m.icon}</div>
+          <div class="podium-name">${p.name}</div>
+          <div class="podium-assets">$${p.totalAssets.toLocaleString()}</div>
+        `;
+        pBox.appendChild(item);
+      });
+
+      document.getElementById('modal-settlement').style.display = 'flex';
+    });
+
+    // 🌟 股票購買通知 ➔ 嬰兒聲(清純稚嫩)："有款股票可以申購，有需要嗎"
+    socket.on('screen:open_stock_modal', (plan) => {
+      speakText("有款股票可以申購，有需要嗎？", 'baby');
+      currentBuyingStockName = plan.name;
+      document.getElementById('stk-desc-box').innerHTML = `<strong>💡 標的性質說明：</strong>${plan.desc}`;
+      document.getElementById('stk-info').innerHTML = `
+        <strong>標的名稱：</strong>${plan.name}<br>
+        <strong>本月掛牌價格：</strong>$${plan.price} / 股<br>
+        <strong>8月約定除息：</strong>$${plan.dividendMonth8} / 股<br>
+        <span style="font-size:12px; color:#0284c7;">💡 本筆購買將永久綁定此股利，8月自動核算入帳！</span>
+      `;
+      document.getElementById('modal-stock').style.display = 'flex';
+    });
+
+    // 定存詢問通知 ➔ 女聲："有款適合您的定存專案，要購買嗎?"
+    socket.on('screen:open_deposit_modal', (plan) => {
+      speakText("有款適合您的定存專案，要購買嗎？", 'female');
+      document.getElementById('dep-info').innerHTML = `
+        <strong>專案名稱：</strong>${plan.name}<br>
+        <strong>每期固定存入：</strong>$${plan.monthlyAmount.toLocaleString()}<br>
+        <strong>專案月利率：</strong>${(plan.monthlyRate * 100).toFixed(2)}% (次期起按月領取利息)<br>
+        <span style="font-size:12px; color:#059669;">💡 存入金額將全數列入您的個人總資產儲蓄中！</span>
+      `;
+      document.getElementById('modal-deposit').style.display = 'flex';
+    });
+
+    // 🌟 保險詢問通知 ➔ 改為男聲："有款受歡迎的保險專案，要購買嗎?"
+    socket.on('screen:open_insurance_modal', (plan) => {
+      speakText("有款受歡迎的保險專案，要購買嗎？", 'male');
+      currentInsurancePlanName = plan.name;
+      document.getElementById('ins-info').innerHTML = `
+        <strong>保單名稱：</strong>${plan.name}<br>
+        <strong>每期保險費：</strong>$${plan.monthlyFee.toLocaleString()}<br>
+        <strong>事故理賠金額：</strong>$${plan.claimAmount.toLocaleString()}<br>
+        <span style="font-size:12px; color:#0284c7;">💡 每種保險商品限投保一次，享有持續保障。</span>
+      `;
+      document.getElementById('modal-insurance').style.display = 'flex';
+    });
+
+    function confirmBuyStock() {
+      let shares = Number(document.getElementById('buy-shares').value) || 0;
+      if (shares <= 0) return alert('請輸入有效股數！');
+      socket.emit('player:buy_stock', { shares, stockName: currentBuyingStockName });
+      closeModal('modal-stock');
+    }
+
+    function confirmDeposit() {
+      socket.emit('player:accept_deposit');
+      closeModal('modal-deposit');
+    }
+
+    function confirmInsurance() {
+      if (myCurrentData && myCurrentData.insurances && myCurrentData.insurances[currentInsurancePlanName]) {
+        alert(`⚠️ 您已經投保過「${currentInsurancePlanName}」！\n每種保險商品限投保一次，無法重複購買。`);
+        closeModal('modal-insurance');
+        return;
+      }
+      socket.emit('player:accept_insurance');
+      closeModal('modal-insurance');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    socket.on('state:sync', (data) => {
+      document.getElementById('disp-month').innerText = `第 ${data.gameState.month} 個月 / 12`;
+      let myData = data.leaderboard.find(p => p.id === socket.id);
+      if (myData) {
+        myCurrentData = myData;
+
+        // 依據玩家個人狀況播放專屬語音
+        if (myData.notifications && myData.notifications.length > previousNotificationsCount) {
+          const newestLog = myData.notifications[0];
+
+          // 1. 發薪水 ➔ 女聲："發薪水囉~"
+          if (newestLog.includes('固定薪資') && newestLog.includes('入帳')) {
+            speakText("發薪水囉~", 'female');
+          }
+          // 4. 保險理賠已發放 ➔ 男聲："保險理賠已發放完畢"（僅拿到理賠者播）
+          else if (newestLog.includes('保單理賠入帳')) {
+            speakText("保險理賠已發放完畢", 'male');
+          }
+          // 5. 本月股票漲幅異動 ➔ 男聲："股票浮動啦~"（僅持股者播）
+          else if (newestLog.includes('股票行情異動')) {
+            speakText("股票浮動啦~", 'male');
+          }
+          // 6. 投資股利發放 ➔ 女聲："投資股利發放入帳，請檢查"（僅持股領息者播）
+          else if (newestLog.includes('股票現金股利') || newestLog.includes('股利入帳加總') || newestLog.includes('股票除息總分紅')) {
+            speakText("投資股利發放入帳，請檢查", 'female');
+          }
+
+          previousNotificationsCount = myData.notifications.length;
+        }
+
+        // 金流增減 2 秒長音效
+        if (lastKnownCash !== null) {
+          if (myData.cash > lastKnownCash) {
+            playCashInSound();
+          } else if (myData.cash < lastKnownCash) {
+            playCashOutSound();
+          }
+        }
+        lastKnownCash = myData.cash;
+
+        // 1. 活期現金
+        document.getElementById('disp-cash').innerText = `$${myData.cash.toLocaleString()}`;
+        
+        // 2. 定存累計總額
+        document.getElementById('disp-dep-val').innerText = `$${(myData.depositTotalAmount || 0).toLocaleString()}`;
+
+        // 3. 股票庫存總市值 + 損益%
+        document.getElementById('disp-stock-val').innerText = `$${myData.stockTotalVal.toLocaleString()}`;
+        const roiElem = document.getElementById('disp-stock-roi');
+        if (myData.stockTotalCost > 0) {
+          let sign = myData.stockProfitVal >= 0 ? '+' : '';
+          let roiClass = myData.stockProfitVal > 0 ? 'profit-up' : (myData.stockProfitVal < 0 ? 'profit-down' : '');
+          roiElem.className = `stat-sub ${roiClass}`;
+          roiElem.innerText = `損益 ${sign}$${myData.stockProfitVal.toLocaleString()} (${sign}${myData.stockProfitRate}%)`;
+        } else {
+          roiElem.className = 'stat-sub';
+          roiElem.innerText = '成本 $0 (0.0%)';
+          roiElem.style.color = '#64748b';
+        }
+
+        // 4. 個人總資產
+        document.getElementById('disp-total').innerText = `$${myData.totalAssets.toLocaleString()}`;
+
+        // 股票流水帳
+        if (myData.stockOrders && myData.stockOrders.length > 0) {
+          let stockHtml = myData.stockOrders.map((o) => {
+            let curPrice = data.marketStockPrices[o.name] !== undefined ? data.marketStockPrices[o.name] : o.buyPrice;
+            let currentVal = o.shares * curPrice;
+            let costVal = o.shares * o.buyPrice;
+            let profit = currentVal - costVal;
+            let profitClass = profit > 0 ? 'profit-up' : (profit < 0 ? 'profit-down' : '');
+            let profitTag = profit > 0 ? `▲ +$${profit.toLocaleString()}` : (profit < 0 ? `▼ -$${Math.abs(profit).toLocaleString()}` : '$0');
+
+            return `
+              <div class="stock-batch-item">
+                <span class="badge-month">第 ${o.month} 月買進</span>
+                <strong>${o.name}</strong>：${o.shares} 股<br>
+                <div style="margin-top:4px;">
+                  買入成本：$${o.buyPrice}/股 ➔ <strong>當前市價：$${curPrice}/股</strong><br>
+                  即時市值：<strong>$${currentVal.toLocaleString()}</strong> 
+                  <span class="${profitClass}">(${profitTag})</span>
+                </div>
+                <div style="font-size:11px; color:#0284c7; margin-top:2px;">
+                  8月約定股利：+$${(o.shares * o.dividendPerShare).toLocaleString()}
+                </div>
+              </div>
+            `;
+          }).join('');
+          document.getElementById('disp-stocks').innerHTML = stockHtml;
+        } else {
+          document.getElementById('disp-stocks').innerHTML = '<span style="color:#64748b;">尚無持股</span>';
+        }
+
+        // 定存專案
+        if (myData.deposits && Object.keys(myData.deposits).length > 0) {
+          let depHtml = Object.keys(myData.deposits).map(k => {
+            let d = myData.deposits[k];
+            let startM = d.startMonth !== undefined ? d.startMonth : 1;
+            let accAmt = (d.accumulatedAmount !== undefined ? d.accumulatedAmount : d.monthlyAmount).toLocaleString();
+            let perMonthAmt = Number(d.monthlyAmount).toLocaleString();
+            let ratePercent = (d.monthlyRate * 100).toFixed(2);
+            return `
+              <div class="project-item">
+                <span class="badge-blue-tag">第 ${startM} 月開立</span>
+                <strong>${k}</strong>：累計已存入 <strong>$${accAmt}</strong>（每期固定存 $${perMonthAmt}，月利率 ${ratePercent}%）
+              </div>
+            `;
+          }).join('');
+          document.getElementById('disp-deposits').innerHTML = depHtml;
+        } else {
+          document.getElementById('disp-deposits').innerHTML = '<span style="color:#64748b;">尚未開立定存</span>';
+        }
+
+        // 保險保障
+        if (myData.insurances && Object.keys(myData.insurances).length > 0) {
+          let insHtml = Object.keys(myData.insurances).map(k => {
+            let i = myData.insurances[k];
+            let startM = i.startMonth !== undefined ? i.startMonth : 1;
+            let fee = Number(i.monthlyFee).toLocaleString();
+            let claim = Number(i.claimAmount).toLocaleString();
+            let accFee = (i.accumulatedFee !== undefined ? i.accumulatedFee : i.monthlyFee).toLocaleString();
+            return `
+              <div class="project-item">
+                <span class="badge-blue-tag">第 ${startM} 月投保</span>
+                <strong>${k}</strong>：<span class="badge-green-tag">保障中</span>（每期月繳 $${fee}，事故保障 $${claim}）<span class="blue-bold-text">累計已繳保費 $${accFee}</span>
+              </div>
+            `;
+          }).join('');
+          document.getElementById('disp-insurances').innerHTML = insHtml;
+        } else {
+          document.getElementById('disp-insurances').innerHTML = '<span style="color:#64748b;">尚未購買保險</span>';
+        }
+
+        // 對帳明細
+        const logBox = document.getElementById('notification-box');
+        if (myData.notifications && myData.notifications.length > 0) {
+          logBox.innerHTML = myData.notifications.map(n => `<div class="log-item">${n}</div>`).join('');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
